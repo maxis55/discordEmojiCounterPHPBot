@@ -1,7 +1,10 @@
 <?php
 
 use Discord\Discord;
+use Discord\Helpers\Collection;
 use Discord\Parts\Channel\Message;
+use Helpers\Emoji;
+use Helpers\EmojiHelper;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Models\EmojiModel;
 use Monolog\Handler\StreamHandler;
@@ -13,6 +16,8 @@ use React\Http\Browser;
 require __DIR__ . '/vendor/autoload.php';
 require_once dirname(__FILE__) . '/Constants/Constants.php';
 require_once dirname(__FILE__) . '/Helpers/Helper.php';
+require_once dirname(__FILE__) . '/Helpers/Emoji.php';
+require_once dirname(__FILE__) . '/Helpers/EmojiHelper.php';
 require_once dirname(__FILE__) . '/Models/GuildModel.php';
 require_once dirname(__FILE__) . '/Models/ChannelModel.php';
 require_once dirname(__FILE__) . '/Models/MessageModel.php';
@@ -76,7 +81,41 @@ $discord->on('message',
     function (Message $message, Discord $discord) use ($browser, $logger) {
 
 
-        if ($message->content == PREFIX . 'test') {
+        if (0 === strpos($message->content, PREFIX . 'test')
+            && ! $message->author->bot
+        ) {
+            $emoji  = '🖖🏻';
+            $emoji2 = '🖖';
+//            $emoji2 = '🫀';
+//            $emoji3 = '🤱';
+            $arr[] = $emoji;
+            $arr[] = Emoji::Encode($emoji);
+            $arr[] = $emoji2;
+            $arr[] = Emoji::Encode($emoji2);
+//var_dump($arr);
+            foreach ($arr as $item) {
+//                $message->reply($item);
+            }
+            EmojiHelper::possibleDecodingViaIntl($message);
+
+            /**
+             * @var \Discord\Parts\Channel\Channel $channelTEst
+             */
+            $specialSymbol='?';
+            $channelTEst=$discord->guilds->offsetGet('484796051698483211')->channels->offsetGet('825852741897027644');
+            $messageTest=$channelTEst->getMessage('830945293049921598')->then(function (Message $message){
+                var_dump($message->content);
+            });
+//            var_dump($messageTest);
+//            var_dump($messageTest);
+//            $message->channel->getMessageHistory(([
+//                'before' => $message,
+//                'limit'  => self::MESSAGE_HISTORY_LIMIT
+//            ])->done(function (Collection $messages) use (
+//                $emojis,
+//                $authors,
+//                $originalMessage
+//            ) {)
 
 
         }
