@@ -6,8 +6,9 @@ namespace Helpers;
 
 use Discord\Helpers\Collection;
 use Discord\Parts\Channel\Message;
+use Discord\Parts\User\Member;
+use Discord\Parts\User\User;
 use Illuminate\Support\Collection as IllumCollection;
-use Models\AttachmentModel;
 use Models\AuthorModel;
 use Models\EmojiModel;
 use Models\MessageModel;
@@ -30,7 +31,7 @@ class Helper
         Message $originalMessage
     ) {
         $lastMessage = $message;
-        var_dump('doing this message. ' . $lastMessage->id);
+
         $message->channel->getMessageHistory([
             'before' => $lastMessage,
             'limit'  => self::MESSAGE_HISTORY_LIMIT
@@ -44,10 +45,9 @@ class Helper
              */
             try {
                 foreach ($messages as $message) {
-                    self::processOneMessage($message, $authors);
+                    self::processOneMessage($message, $emojis, $authors);
 
                     $lastMessage = $message;
-
                 }
 
                 $lastAmount = $messages->count();
@@ -69,11 +69,13 @@ class Helper
 
     /**
      * @param Message                                   $message
+     * @param \Illuminate\Support\Collection|Collection $emojis
      * @param \Illuminate\Support\Collection|Collection $authors
      * @param bool                                      $processGuildAndChannel
      */
     public static function processOneMessage(
         Message $message,
+        $emojis = null,
         $authors = null,
         bool $processGuildAndChannel = false
     ) {
@@ -81,38 +83,12 @@ class Helper
             self::processGuildAndChannel($message);
         }
 
-        if (is_null($authors)) {
-            $authors = AuthorModel::where('author_id', $message->author->id)
-                ->get()->keyBy('author_id');
+        if ($message->author->bot) {
+            //no need to count messages from bots
+            return;
         }
-        $authorModel = $authors->get($message->author->id);
-        if (is_null($authorModel) || ! $authorModel->username) {
-            /**
-             * @var AuthorModel $authorModel
-             */
-            $authorModel = AuthorModel::updateOrCreate(
-                [
-                    'author_id' => $message->author->id
-                ],
-                [
-                    'username'      => $message->author->username,
-                    'avatar'        => $message->author->avatar,
-                    'discriminator' => $message->author->discriminator,
-                    'bot'           => $message->author->bot,
-                    'system'        => $message->author->system,
-                    'mfa_enabled'   => $message->author->mfa_enabled,
-                    'locale'        => $message->author->locale,
-                    'verified'      => $message->author->verified,
-                    'email'         => $message->author->email,
-                    'flags'         => $message->author->flags,
-                    'premium_type'  => $message->author->premium_type,
-                    'public_flags'  => $message->author->public_flags,
-                ]
 
-            );
-
-            $authors->put($authorModel->author_id, $authorModel);
-        }
+        self::createAuthorIfNotExists($message->author, $authors);
 
         /**
          * @var  MessageModel $messageModel
@@ -125,52 +101,21 @@ class Helper
                 'author_id'        => $message->author->id,
                 'channel_id'       => $message->channel_id,
                 'guild_id'         => $message->channel->guild_id,
-                'content'          => $message->content,
+                //saving "content" is too expensive and unnecessary
+                'content'          => env('SAVE_MESSAGE_CONTENT', false)
+                    ? $message->content : null,
                 'type'             => $message->type,
                 'edited_timestamp' => $message->edited_timestamp,
                 'timestamp'        => $message->timestamp,
             ]
         );
 
-        $attachmentsParsed = array_map(function ($attachment) {
-            return new AttachmentModel([
-                'attachment_id' => $attachment->id,
-                'width'         => $attachment->width ?? null,
-                'url'           => $attachment->url,
-                'proxy_url'     => $attachment->proxy_url,
-                'height'        => $attachment->height ?? null,
-                'filename'      => $attachment->filename,
-                'content_type'  => $attachment->content_type ?? null,
-                'size'          => $attachment->size ?? null,
-            ]);
-        }, $message->attachments);
-
-        $messageModel->attachments()->delete();
-        $messageModel->attachments()->saveMany($attachmentsParsed);
-
-        $messageModel->createEmojiCounts($emojis);
-
-        if ($message->reactions->count() > 0) {
-            /**
-             * @var \Discord\Parts\Channel\Reaction $reaction
-             */
-            foreach ($message->reactions as $reaction) {
-
-
-                $reaction->getUsers()->then(function ($users) use ($reaction) {
-                    echo 'message.' . $reaction->message_id . PHP_EOL;
-                    echo 'message.emoji.' . $reaction->emoji->name . PHP_EOL;
-                    /**
-                     * @var \Discord\Parts\User\User $user
-                     */
-                    foreach ($users as $user) {
-                        echo 'user.' . $user->username . PHP_EOL;
-                    }
-                    echo PHP_EOL;
-
-                });
-            }
+        if (env('SAVE_ATTACHMENTS', false)) {
+            $messageModel->saveAttachments($message);
         }
+
+        $messageModel->createEmojiCounts($message, $emojis, $authors);
+
 
     }
 
@@ -223,6 +168,46 @@ class Helper
                 ]);
     }
 
+    /**
+     * @param User|Member                    $author
+     * @param \Illuminate\Support\Collection $authors
+     */
+    public static function createAuthorIfNotExists($author, $authors = null)
+    {
+        if (is_null($authors)) {
+            $authors = AuthorModel::where('author_id', $author->id)
+                ->get()->keyBy('author_id');
+        }
+        $authorModel = $authors->get($author->id);
+        if (is_null($authorModel) || ! $authorModel->username) {
+            var_dump('creating new user');
+            /**
+             * @var AuthorModel $authorModel
+             */
+            $authorModel = AuthorModel::updateOrCreate(
+                [
+                    'author_id' => $author->id
+                ],
+                [
+                    'username'      => $author->username,
+                    'avatar'        => $author->avatar,
+                    'discriminator' => $author->discriminator,
+                    'bot'           => $author->bot,
+                    'system'        => $author->system,
+                    'mfa_enabled'   => $author->mfa_enabled,
+                    'locale'        => $author->locale,
+                    'verified'      => $author->verified,
+                    'email'         => $author->email,
+                    'flags'         => $author->flags,
+                    'premium_type'  => $author->premium_type,
+                    'public_flags'  => $author->public_flags,
+                ]
+
+            );
+
+            $authors->put($authorModel->author_id, $authorModel);
+        }
+    }
 
     /**
      * @param $emojiRanked

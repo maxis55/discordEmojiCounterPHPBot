@@ -1,7 +1,6 @@
 <?php
 
 use Discord\Discord;
-use Discord\Helpers\Collection;
 use Discord\Parts\Channel\Message;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Models\EmojiModel;
@@ -28,7 +27,7 @@ $dotenv->load();
 
 $capsule = new Capsule;
 $capsule->addConnection([
-    'driver'    => 'mysql',
+    'driver'    => env('DB_DRIVER', 'mysql'),
     'host'      => env('DB_HOST'),
     'port'      => env('DB_PORT', '3306'),
     'database'  => env('DB_DATABASE'),
@@ -58,7 +57,7 @@ $logger->pushHandler(
 );
 
 $discord = new Discord([
-    'token'          => $_ENV['BOT_TOKEN'],
+    'token'          => env('BOT_TOKEN'),
     'loadAllMembers' => false,
     'loop'           => $loop,
     'logger'         => $logger
@@ -76,6 +75,12 @@ $discord->once('ready', function (Discord $discord) {
 $discord->on('message',
     function (Message $message, Discord $discord) use ($browser, $logger) {
 
+
+        if ($message->content == PREFIX . 'test') {
+
+
+        }
+
         if ($message->content == PREFIX . 'rankByGuildActive') {
             try {
                 $message->channel->guild->emojis->freshen()->done(function (
@@ -92,7 +97,8 @@ $discord->on('message',
                         ->orderBy('emoji_count', 'DESC')
                         ->where('emoji_used.author_id', '!=', $discord->id)
                         ->whereIn('emojis.emoji_id', $guildEmojiIds)
-                        ->get()->chunk(20);//chunk by 20 or it wont fit into 1 message and fail
+                        ->get()
+                        ->chunk(20);//chunk by 20 or it wont fit into 1 message and fail
 
 
                     foreach ($emojiRankedChunks as $emojiRankedChunk) {
@@ -107,7 +113,7 @@ $discord->on('message',
 
         if (strtolower($message->content) == PREFIX . 'dance') {
 
-            if (!\Helpers\Helper::authorIsAdmin($message)) {
+            if ( ! \Helpers\Helper::authorIsAdmin($message)) {
                 $message->reply('Nope.');
 
                 return;
@@ -225,7 +231,7 @@ $discord->on('message',
 
         //process message and add to DB
 
-        \Helpers\Helper::processOneMessage($message, null, true);
+        \Helpers\Helper::processOneMessage($message, null, null, true);
     });
 
 $discord->run();
