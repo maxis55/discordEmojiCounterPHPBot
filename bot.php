@@ -76,53 +76,6 @@ $discord->once('ready', function (Discord $discord) {
 $discord->on('message',
     function (Message $message, Discord $discord) use ($browser, $logger) {
 
-
-        if ($message->content == PREFIX . 'testReactions') {
-            $message->channel->getMessageHistory([
-                'before' => $message,
-                'limit'  => LIMIT
-            ])->done(function (Collection $messages)  {
-                /**
-                 * @var Message $message
-                 */
-                foreach ($messages as $message){
-                    if($message->reactions->count()>0){
-                        /**
-                         * @var \Discord\Parts\Channel\Reaction $reaction
-                         */
-                        foreach ($message->reactions as $reaction){
-                            echo 'message.'.$reaction->message_id;
-                            echo 'message.emoji.'.$reaction->emoji;
-                            var_dump($reaction->message_id);
-                            var_dump($reaction->getUsers()->then(function ($el){
-                                var_dump($el);
-                            }));
-//                         var_dump($reaction);
-                        }
-//                       $message->getReactionsTest()->done(function ($res){
-//                           var_dump($res);
-//                       });
-//                        var_dump('creating reaction collector '.$message->content);
-//                        var_dump($message->reactions);
-//                        $message->createReactionCollector(function (MessageReaction $reaction) {
-//                            echo 'getting reaction'.PHP_EOL;
-//                            var_dump($reaction);
-//                            // return true or false depending on whether you want the reaction to be collected.
-//                            return true;
-//                        }, [
-////                            'time' => false,
-//                            'limit' => 10,
-//                        ])->done(function (Collection $reactions) {
-//                            var_dump($reactions);
-//                            foreach ($reactions as $reaction) {
-//                                // ...
-//                            }
-//                        })->;
-                    }
-                }
-            });
-        }
-
         if ($message->content == PREFIX . 'rankByGuildActive') {
             try {
                 $message->channel->guild->emojis->freshen()->done(function (
@@ -150,13 +103,11 @@ $discord->on('message',
             } catch (Throwable $exception) {
                 var_dump($exception->getMessage());
             }
-
-
         }
 
         if (strtolower($message->content) == PREFIX . 'dance') {
 
-            if (!\Helpers\Helper::isAdmin($message->author)) {
+            if (!\Helpers\Helper::authorIsAdmin($message)) {
                 $message->reply('Nope.');
 
                 return;
@@ -274,8 +225,7 @@ $discord->on('message',
 
         //process message and add to DB
 
-        $temp = null;
-        \Helpers\Helper::processOneMessage($message, $temp, true);
+        \Helpers\Helper::processOneMessage($message, null, true);
     });
 
 $discord->run();

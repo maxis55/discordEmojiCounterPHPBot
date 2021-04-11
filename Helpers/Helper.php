@@ -6,8 +6,6 @@ namespace Helpers;
 
 use Discord\Helpers\Collection;
 use Discord\Parts\Channel\Message;
-use Discord\Parts\User\Member;
-use Discord\Parts\User\User;
 use Illuminate\Support\Collection as IllumCollection;
 use Models\AttachmentModel;
 use Models\AuthorModel;
@@ -17,7 +15,7 @@ use Throwable;
 
 class Helper
 {
-    const LIMIT = 100;
+    const MESSAGE_HISTORY_LIMIT = 100;
 
     /**
      * @param Message         $message
@@ -27,18 +25,18 @@ class Helper
      */
     public static function processAllMessages(
         Message $message,
-        IllumCollection &$emojis,
-        IllumCollection &$authors,
+        IllumCollection $emojis,
+        IllumCollection $authors,
         Message $originalMessage
     ) {
         $lastMessage = $message;
         var_dump('doing this message. ' . $lastMessage->id);
         $message->channel->getMessageHistory([
             'before' => $lastMessage,
-            'limit'  => self::LIMIT
+            'limit'  => self::MESSAGE_HISTORY_LIMIT
         ])->done(function (Collection $messages) use (
-            &$emojis,
-            &$authors,
+            $emojis,
+            $authors,
             $originalMessage
         ) {
             /**
@@ -53,7 +51,9 @@ class Helper
                 }
 
                 $lastAmount = $messages->count();
-                if (self::LIMIT == $lastAmount && isset($lastMessage)) {
+                if (self::MESSAGE_HISTORY_LIMIT == $lastAmount
+                    && isset($lastMessage)
+                ) {
                     self::processAllMessages($lastMessage, $emojis, $authors,
                         $originalMessage);
                 } else {
@@ -74,7 +74,7 @@ class Helper
      */
     public static function processOneMessage(
         Message $message,
-        &$authors = null,
+        $authors = null,
         bool $processGuildAndChannel = false
     ) {
         if ($processGuildAndChannel) {
@@ -87,7 +87,6 @@ class Helper
         }
         $authorModel = $authors->get($message->author->id);
         if (is_null($authorModel) || ! $authorModel->username) {
-
             /**
              * @var AuthorModel $authorModel
              */
@@ -150,6 +149,29 @@ class Helper
         $messageModel->attachments()->saveMany($attachmentsParsed);
 
         $messageModel->createEmojiCounts($emojis);
+
+        if ($message->reactions->count() > 0) {
+            /**
+             * @var \Discord\Parts\Channel\Reaction $reaction
+             */
+            foreach ($message->reactions as $reaction) {
+
+
+                $reaction->getUsers()->then(function ($users) use ($reaction) {
+                    echo 'message.' . $reaction->message_id . PHP_EOL;
+                    echo 'message.emoji.' . $reaction->emoji->name . PHP_EOL;
+                    /**
+                     * @var \Discord\Parts\User\User $user
+                     */
+                    foreach ($users as $user) {
+                        echo 'user.' . $user->username . PHP_EOL;
+                    }
+                    echo PHP_EOL;
+
+                });
+            }
+        }
+
     }
 
     /**
@@ -221,13 +243,16 @@ class Helper
     }
 
     /**
-     * @param Member|User $author
+     * @param Message $message
      *
      * @return bool
      */
-    public static function isAdmin($author): bool
+    public static function authorIsAdmin(Message $message): bool
     {
-        foreach ($author->roles as $role) {
+        if ($message->channel->guild->owner_id == $message->author->id) {
+            return true;
+        }
+        foreach ($message->author->roles as $role) {
             if ($role->permissions->administrator) {
                 return true;
             }
