@@ -180,7 +180,6 @@ class Helper
         }
         $authorModel = $authors->get($author->id);
         if (is_null($authorModel) || ! $authorModel->username) {
-            var_dump('creating new user');
             /**
              * @var AuthorModel $authorModel
              */

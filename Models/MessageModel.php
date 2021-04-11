@@ -50,15 +50,21 @@ class MessageModel extends Model
             $emojisModels = new Collection();
         }
         $emojis = [];
-        if (false != preg_match_all(EmojiModel::EMOJI_REGEX, $message->content,
-                $emojis)
+        if (false != preg_match_all(
+                EmojiModel::EMOJI_REGEX,
+                $message->content,
+                $emojis
+            )
         ) {
             $this->emojisUsed()->delete();
             foreach (reset($emojis) as $emoji) {
 
                 $singleEmojiMatches = [];
-                preg_match(EmojiModel::EMOJI_NAME_REGEX, $emoji,
-                    $singleEmojiMatches);
+                preg_match(
+                    EmojiModel::EMOJI_NAME_REGEX,
+                    $emoji,
+                    $singleEmojiMatches
+                );
                 $emojiName = $singleEmojiMatches[1];
 
                 //remove "<",">" and emote "name" to get id

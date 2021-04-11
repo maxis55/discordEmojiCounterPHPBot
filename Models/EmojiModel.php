@@ -16,7 +16,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class EmojiModel extends Model
 {
-    const EMOJI_REGEX = '/\<\:.*\:\d*\>/';
+    //any symbol, any amount between ::(except for : itself, otherwise it might count multiple emotes as 1
+    const EMOJI_REGEX = '/\<\:[^:]*\:\d*\>/';
+    //anything between ::
     const EMOJI_NAME_REGEX = '/\:(.*?)\:/';
 
     public $incrementing = false;
