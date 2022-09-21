@@ -10,6 +10,7 @@ namespace Models;
 class GuildModel extends \Illuminate\Database\Eloquent\Model
 {
     public $incrementing = false;
+    public $timestamps=false;
     protected $primaryKey = 'guild_id';
     protected $table = 'guilds';
     protected $fillable

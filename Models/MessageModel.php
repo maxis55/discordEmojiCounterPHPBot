@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
 class MessageModel extends Model
 {
     public $incrementing = false;
+    public $timestamps=false;
     protected $primaryKey = 'message_id';
     protected $table = 'messages';
     protected $fillable
@@ -75,7 +76,9 @@ class MessageModel extends Model
                 $emojiModel = $emojisModels->get($emojiDiscoId);
 
                 if (is_null($emojiModel)) {
-
+                    if (is_null($emojiDiscoId)) {
+                        $emojiDiscoId = md5($emojiName);
+                    }
                     $emojiModel = EmojiModel::updateOrCreate(
                         ['emoji_id' => $emojiDiscoId],
                         ['name' => $emojiName]
@@ -100,9 +103,12 @@ class MessageModel extends Model
                 $emojiModel = $emojisModels->get($reaction->emoji->id);
 
                 if (is_null($emojiModel)) {
-
+                    $emojiDiscoId=$reaction->emoji->id;
+                    if (empty($emojiDiscoId)) {
+                        $emojiDiscoId = md5($reaction->emoji->name);
+                    }
                     $emojiModel = EmojiModel::updateOrCreate(
-                        ['emoji_id' => $reaction->emoji->id],
+                        ['emoji_id' => $emojiDiscoId],
                         ['name' => $reaction->emoji->name]
                     );
                     $emojisModels->put($reaction->emoji->id, $emojiModel);

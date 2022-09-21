@@ -5,6 +5,7 @@ namespace Helpers;
 
 
 use Discord\Helpers\Collection;
+use Discord\Parts\Channel\Channel;
 use Discord\Parts\Channel\Message;
 use Discord\Parts\User\Member;
 use Discord\Parts\User\User;
@@ -28,17 +29,22 @@ class Helper
         Message $message,
         IllumCollection $emojis,
         IllumCollection $authors,
-        Message $originalMessage
+        Message $originalMessage,
+        Channel $channel = null
     ) {
         $lastMessage = $message;
+        if (!$channel) {
+            $channel = $message->channel;
+        }
 
-        $message->channel->getMessageHistory([
+        $channel->getMessageHistory([
             'before' => $lastMessage,
-            'limit'  => self::MESSAGE_HISTORY_LIMIT
+            'limit' => self::MESSAGE_HISTORY_LIMIT
         ])->done(function (Collection $messages) use (
             $emojis,
             $authors,
-            $originalMessage
+            $originalMessage,
+            $channel
         ) {
             /**
              * @var Message $message
@@ -54,17 +60,27 @@ class Helper
                 if (self::MESSAGE_HISTORY_LIMIT == $lastAmount
                     && isset($lastMessage)
                 ) {
-                    self::processAllMessages($lastMessage, $emojis, $authors,
-                        $originalMessage);
+                    self::processAllMessages(
+                        $lastMessage,
+                        $emojis,
+                        $authors,
+                        $originalMessage,
+                        $channel
+                    );
                 } else {
-                    $originalMessage->reply('Done parsing');
+                    $originalMessage->reply('Done parsing channel '.$channel->name);
                 }
-
             } catch (Throwable $exception) {
+                $originalMessage->reply('Error during processing of channel '.$channel->name.' '.$exception->getMessage());
                 var_dump($exception->getMessage());
             }
-
-        });
+        },
+            function ($exception) use ($originalMessage, $channel) { //on rejected
+                $originalMessage->reply('Rejected requesting history when processing channel '.$channel->name.' '.$exception->getMessage());
+            },
+            function ($messages) { //on progress
+                var_dump('progress');
+            });
     }
 
     /**
@@ -146,26 +162,28 @@ class Helper
         );
 
 
-        $discoChannel = $message->channel;
+        foreach ($discoGuild->channels as $discoChannel){
+            /**
+             * @var \Models\ChannelModel $channel
+             */
+            $channel = $guild->channels()
+                ->updateOrCreate(
+                    [
+                        'channel_id' => $discoChannel->id,
+                    ],
+                    [
+                        'name'           => $discoChannel->name,
+                        'type'           => $discoChannel->type,
+                        'position'       => $discoChannel->position,
+                        'is_private'     => $discoChannel->is_private,
+                        'nsfw'           => $discoChannel->nsfw,
+                        'owner_id'       => $discoChannel->owner_id,
+                        'application_id' => $discoChannel->application_id,
+                        'parent_id'      => $discoChannel->parent_id,
+                    ]);
+        }
 
-        /**
-         * @var \Models\ChannelModel $channel
-         */
-        $channel = $guild->channels()
-            ->updateOrCreate(
-                [
-                    'channel_id' => $discoChannel->id,
-                ],
-                [
-                    'name'           => $discoChannel->name,
-                    'type'           => $discoChannel->type,
-                    'position'       => $discoChannel->position,
-                    'is_private'     => $discoChannel->is_private,
-                    'nsfw'           => $discoChannel->nsfw,
-                    'owner_id'       => $discoChannel->owner_id,
-                    'application_id' => $discoChannel->application_id,
-                    'parent_id'      => $discoChannel->parent_id,
-                ]);
+
     }
 
     /**

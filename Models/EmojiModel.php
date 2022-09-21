@@ -22,6 +22,7 @@ class EmojiModel extends Model
     const EMOJI_NAME_REGEX = '/\:(.*?)\:/';
 
     public $incrementing = false;
+    public $timestamps=false;
     protected $table = 'emojis';
     protected $primaryKey = 'emoji_id';
     protected $fillable = ['name', 'emoji_id', 'guild_id', 'animated'];

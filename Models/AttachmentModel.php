@@ -10,6 +10,7 @@ namespace Models;
 class AttachmentModel extends \Illuminate\Database\Eloquent\Model
 {
     public $incrementing = false;
+    public $timestamps=false;
     protected $primaryKey = 'attachment_id';
     protected $table = 'message_attachments';
     protected $fillable

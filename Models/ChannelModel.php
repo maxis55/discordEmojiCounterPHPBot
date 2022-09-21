@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 class ChannelModel extends Model
 {
     public $incrementing = false;
+    public $timestamps=false;
     protected $primaryKey = 'channel_id';
     protected $table = 'channels';
     protected $fillable
